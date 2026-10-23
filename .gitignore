@@ -1,0 +1,14 @@
+.venv/
+.venv-train/
+__pycache__/
+data/
+models/*
+!models/v1.0.0/
+models/v1.0.0/*
+!models/v1.0.0/isl_lstm.keras
+!models/v1.0.0/report.json
+.env
+.env.*
+!.env.example
+*.log
+.pytest_cache/

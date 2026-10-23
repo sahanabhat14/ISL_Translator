@@ -1,0 +1,2 @@
+# Use a separate Python 3.12 environment. Camera packages stay in .venv.
+tensorflow==2.21.0
