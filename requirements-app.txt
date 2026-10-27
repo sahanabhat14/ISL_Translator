@@ -1,0 +1,2 @@
+-r requirements-live.txt
+streamlit==1.66.1

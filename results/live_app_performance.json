@@ -1,0 +1,7 @@
+{
+  "camera_fps": 30.06,
+  "tracking_fps": 17.44,
+  "tracking_ms": 39.85,
+  "prediction_ms": 0.0,
+  "estimated_40_frame_confirmation_seconds": 2.29
+}

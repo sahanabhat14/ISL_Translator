@@ -12,3 +12,6 @@ models/v1.0.0/*
 !.env.example
 *.log
 .pytest_cache/
+
+# Generated previews and authoring scratch files
+tmp/

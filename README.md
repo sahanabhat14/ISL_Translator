@@ -1,205 +1,114 @@
-# ISL Translator training starter
+# ISL Translator
 
-## Current model with a silent background class
+Windows webcam prototype for five isolated signs: HELLO, THANK_YOU, YES, NO and BYE, plus a silent NO_SIGN background class. Uses MediaPipe hand landmarks, a TensorFlow LSTM, Streamlit and offline Windows speech.
 
-The default live model is now `models/run_20261022_232911_931283/`.
-It was trained on 180 valid clips (132 training, 24 validation, 24 test),
-stopped after 46 epochs and restored epoch 34. Reload verification reproduced
-22/24 correct test predictions (91.7%). All four NO_SIGN test clips were correct.
-One THANK_YOU became HELLO and one NO became NO_SIGN. The latter would suppress
-speech, so explicitly test NO when trying the new model. These small random
-clip results do not establish generalization to new sessions/signers.
-The earlier five-sign model remains available via
-`--model-dir models/run_20261022_232038_450902`.
+**Status:** v1.0.0 is the initial tagged prototype. The current main branch adds a local app and targeted data collection as work in progress. NO can be confused with NO_SIGN, causing silence. This is not continuous sign-language or sentence translation, and the planned 30 signs are not implemented.
 
-Collection and training now include NO_SIGN alongside the five signs. Run
-`.\.venv\Scripts\python.exe collect_data.py` to collect 30 valid NO_SIGN clips;
-completed sign folders are skipped. Keep at least one hand detected throughout
-each clip. Vary relaxed hand positions, small natural movements and ordinary
-repositioning without performing HELLO, THANK_YOU, YES, NO or BYE. Avoid making
-every background clip the same pose. The 80% hand-visibility check still applies:
-empty frames are already handled by the live detector and are not useful examples
-of visible non-sign activity.
+## Start on a new Windows computer
 
-The six-class model has been trained, verified and selected for live use.
-The recognition code displays a confirmed NO_SIGN as
-"No sign", suppresses speech for that class, clears pending speech when it is
-the leading prediction, and rearms repeated-sign speech after confirmation.
-An utterance already playing may finish. This class can reduce false positives
-but cannot guarantee rejection of every unfamiliar gesture. Test resting hands
-and transitions live; reduced false positives are not established by the clip test.
-
-## Previous five-sign model
-
-The previous webcam model recognizes HELLO, THANK_YOU, YES, NO and BYE.
-Run `.\.venv-train\Scripts\python.exe recognize.py` to test all five with speech.
-Training used 150 valid clips, split into 110 training, 20 validation and 20 test
-clips. The run stopped after 26 epochs and restored epoch 14. The saved model
-correctly classified 19/20 test clips (95%); one THANK_YOU was classified as NO.
-Each class had four test clips. Reload verification reproduced the confusion matrix.
-These random clip results do not establish accuracy on new signers or sessions.
-
-Model and report: `models/run_20261022_232038_450902/`.
-The original three-sign model remains in `models/run_20261019_232551_504610/`.
-
-## Collection target
-
-Collection and the next training run now use five signs: HELLO, THANK_YOU,
-YES, NO and BYE. The existing three signs already have 30 valid clips each.
-Run `.\.venv\Scripts\python.exe collect_data.py` to collect 30 valid NO clips
-and 30 valid BYE clips. Completed signs are skipped, rejected clips are
-retried, and existing files are preserved. Verify the ISL gestures before recording.
-
-Then run `.\.venv-train\Scripts\python.exe train_model.py --check`.
-Training requires 30 valid clips for all five signs and creates a separate model
-with all five output classes. The current live default remains the tested
-five-sign model after training and reload verification. To use a different run,
-pass `--model-dir models/run_...` to recognize.py. Live label order always comes
-from that model's report, not the collection vocabulary.
-
-The sections below document the original three-sign baseline and its results.
-
-The first experiment recognizes HELLO, THANK_YOU and YES from 30 frames of
-two-hand landmarks (126 numbers per frame). This is a hands-only isolated-word
-baseline for the larger MediaPipe + LSTM/GRU project in the synopsis and slides.
-It does not yet implement pose/face landmarks, continuous translation, speech,
-or the planned 20–40 sign vocabulary.
-
-## 1. Collect usable examples
-
-Run these PowerShell commands from this project directory:
+Install Python 3.12 and Git, then run in PowerShell:
 
 ```powershell
-.\.venv\Scripts\python.exe collect_data.py
-```
-
-Use verified ISL gestures consistently. Watch the **Hands detected** counter:
-it should show the expected number of hands. Position the camera so both hands
-stay visible, with good lighting. Perform one complete sign during each
-30-frame recording, then return to the starting position during the countdown.
-Capture waits 50 ms per frame in addition to processing time, so a clip lasts
-at least 1.5 seconds. Future inference must use the same capture cadence.
-Press Q in the camera window to stop.
-
-The collector resumes toward 30 valid clips per sign and saves with unique names,
-so rerunning preserves earlier examples. Rejected clips are retried. It rejects clips with hands detected
-in fewer than 80% of frames. This is a basic quality check, not proof that the
-gesture or both required hands were captured correctly. Repeat collection if
-there are rejections. Vary repetitions naturally and avoid duplicate clips.
-
-The two original HELLO recordings were inspected on 19 October 2026 and both
-contained only zeros. They remain on disk for inspection but training rejects
-them. Do not count them as useful examples.
-
-```powershell
-.\.venv\Scripts\python.exe train_model.py --check
-```
-
-Collect at least 30 valid examples **for each sign** before the first experiment.
-This is a pipeline milestone, not evidence of sufficient data for deployment.
-
-## 2. Prepare the training environment
-
-The existing .venv uses Python 3.14 and handles collection. A separate
-.venv-train with Python 3.12 and TensorFlow 2.21.0 has now been installed and
-verified locally with a synthetic LSTM training step. To train once data is ready:
-
-```powershell
-.\.venv-train\Scripts\python.exe train_model.py
-```
-
-For setup on another computer, install Python 3.12 if needed and create a
-separate environment without replacing .venv:
-
-```powershell
+git clone https://github.com/sahanabhat14/sign_launguage_thing.git
+cd sign_launguage_thing
 py -3.12 -m venv .venv-train
-.\.venv-train\Scripts\python.exe -m pip install -r requirements-training.txt
+.\.venv-train\Scripts\python.exe -m pip install -r requirements-app.txt
+```
+
+Download the MediaPipe Hand Landmarker asset from Google's model storage. It is not included in Git:
+
+```powershell
+Invoke-WebRequest -Uri 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task' -OutFile 'models/hand_landmarker.task'
+Get-FileHash models/hand_landmarker.task -Algorithm SHA256
+```
+
+Expected SHA256: `fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1`.
+Do not run a mismatching asset; retry the download. The project uses MediaPipe 1.1.0, TensorFlow 2.21.0, opencv-contrib-python 5.0.0.93, Streamlit 1.66.1 and pywin32 312, as pinned in the requirement files. Speech uses Windows SAPI, so this setup targets Windows.
+
+Launch by double-clicking `start_app.bat`, or run:
+
+```powershell
+.\.venv-train\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1 --server.fileWatcherType none
+```
+
+Open the address shown, normally http://127.0.0.1:8501/. Keep the server terminal open. After changing source code, stop the server with Ctrl+C, restart it and refresh the browser. The launcher reuses an existing server; it does not reload edited code automatically.
+
+Close other camera apps, press Start camera, and wait for model loading. Use Clear/reset before a fresh attempt. The speech toggle controls sign announcements; Test audio explicitly plays a phrase even while announcements are muted. Stop releases capture. Removing hands or a confirmed NO_SIGN can rearm repeated-sign speech. NO_SIGN intentionally stays silent; the meaningful NO sign should speak "No".
+
+The app uses the webcam and speakers of the computer running Python. Preview images and word history stay in memory; the app does not save webcam images. It is a local interface, not a deployed multi-user website.
+
+## Model and evaluation
+
+The default model and report are bundled under `models/v1.0.0/`. There are six output classes, in the order saved in the report.
+
+- Input: 30 frames x 126 features (two hands x 21 landmarks x xyz).
+- Mirrored frames; MediaPipe Left features first, Right second; missing hands are zeros.
+- Training-only feature normalization embedded in the model, LSTM(64), Dropout(0.3), Dense(32, ReLU), Dense(6, softmax).
+- Adam, sparse categorical cross-entropy, batch size 16, early stopping on validation loss.
+- Initial 180 valid clips: 132 training, 24 validation, 24 test, split by whole clip with seed 42.
+- Saved test result: 22/24 correct (91.7%). Errors: THANK_YOU to HELLO and NO to NO_SIGN.
+
+This small random clip split is not signer/session-independent evaluation. It does not establish live accuracy or performance on new people. The repository does not contain the private recording dataset, so a fresh clone cannot reproduce that evaluation without separately obtaining the data. Tests use synthetic input when original test clips are absent.
+
+## Current development and known issues
+
+Camera capture runs independently of recognition. MediaPipe and compiled TensorFlow inference share a persistent local worker process to avoid Streamlit rerun cleanup interfering with model state. Prediction confirmation requires three agreeing windows above a 0.8 threshold; predictions are attempted every five valid frames once the 30-frame buffer is full. This confidence score is not calibrated reliability.
+
+The app now retains native camera resolution and waits 50 ms after recognition processing to approximate the collector's cadence; the preview runs independently. Very short tracking gaps under 0.2 seconds are tolerated. Longer gaps clear the sequence. Timing depends on hardware and detection quality.
+
+Numeric historical measurements are in `results/`. Model-only median prediction dropped from about 127 ms eager to 2.4 ms compiled on the development laptop, with matching saved-test outputs. This excludes gesture collection and tracking. Historical tracking rates predate the latest timing correction; they are not a current sign-to-word latency guarantee.
+
+Remaining work: improve NO/NO_SIGN separation, verify all five signs live, test resting hands/transitions, collect independent sessions/users, and then expand vocabulary. The background class cannot reject every unfamiliar gesture. Hands-only features do not capture body pose or facial grammar.
+
+## Collect and train
+
+Raw landmark recordings under `data/` are ignored by Git. Collection resumes toward a total number of valid clips without overwriting earlier files:
+
+```powershell
+.\.venv-train\Scripts\python.exe collect_data.py
+```
+
+For the current NO/NO_SIGN issue, target 60 total valid clips for each selected class:
+
+```powershell
+.\.venv-train\Scripts\python.exe collect_data.py --signs NO NO_SIGN --target 60
+```
+
+With 30 existing clips, this requests 30 more per selected class. Keep hands visible, use verified ISL gestures, and perform one complete sign during each recording. For NO_SIGN, rest or move naturally without performing a trained sign. A clip is 30 frames, with a 50 ms wait plus processing per frame; it is not a fixed-duration video. Validation requires finite values, shape (30,126), and hands visible in at least 80% of frames. Q stops collection; rerun to resume.
+
+```powershell
+.\.venv-train\Scripts\python.exe train_model.py --check
 .\.venv-train\Scripts\python.exe train_model.py
 ```
 
-TensorFlow Windows build compatibility:
-https://www.tensorflow.org/install/source_windows
+Training requires at least 30 valid clips for every class and saves a separate timestamped `models/run_*` directory. It does not replace the bundled default automatically. Compare per-class errors and independent live trials before changing the default model. Keep v1 intact. Extra collection and retraining have not been confirmed complete in this update.
 
-## 3. Understand the result
-
-The script splits whole recordings by class into training, validation and test
-sets (approximately 70/15/15). It fits feature standardization on training data
-only and embeds it in the saved model. This standardization does not provide
-the shoulder-relative spatial normalization described in the proposal.
-An LSTM learns temporal patterns, and early stopping restores the weights with
-the best validation loss. The test set is evaluated after training.
-
-Each run creates a new models/run_* directory containing isl_lstm.keras and
-report.json with label order, input format, split membership, learning curves,
-test accuracy, per-class precision/recall and a confusion matrix. Matrix rows
-are true classes and columns are predicted classes, in the saved label order.
-
-This initial random clip split may share signer and session conditions across
-sets. Before reporting generalization, record signer/session identifiers and
-hold out entire signers or sessions. Do not repeatedly tune on test results.
-The current classifier always chooses among three signs; confidence alone does
-not establish that an unseen gesture is a known sign.
-
-## 4. Try live recognition
+Original CLI alternative:
 
 ```powershell
 .\.venv-train\Scripts\python.exe recognize.py
 ```
 
-Use the training environment for recognition. For a fresh installation, install
-`requirements-live.txt` there first. The script defaults to the verified first
-training run; use `--model-dir models/run_...` to select another complete run.
-`--check` loads the model, runs saved test clips and initializes the hand detector
-without opening a webcam. Use `--camera 1` if your camera has a different index.
+Q quits; R resets; M mutes; T tests speech. Use `--model-dir models/run_YOUR_RUN` to select another complete model/report pair. Do not open the CLI camera and app camera together.
 
-Sign HELLO, THANK_YOU or YES at the same pace and position as collection. The
-first result takes about two seconds or more: 30 frames plus agreement over
-three overlapping prediction windows. Q quits; R clears the buffer. Removing
-your hands clears the prediction and starts a fresh sequence when they return.
-Brief hand-detection gaps also reset the buffer, so keep hands visible.
+## Checks
 
-Collection and inference share the same feature extraction (mirrored camera,
-Left then Right, missing hands zero-filled). Normalization is inside the model.
-Both use a 50 ms display wait plus processing; live inference adds overhead,
-so this is approximate pacing, not a fixed frame rate. Three consecutive
-windows must exceed the default 0.8 score threshold and agree before display.
-This threshold is a starting heuristic, not a calibrated reliability measure.
-Visible resting hands and unknown gestures can still get confident labels.
+```powershell
+.\.venv-train\Scripts\python.exe -m unittest discover -s tests -v
+```
 
-Speech is enabled by default and runs on a background thread using the Windows
-offline voice using direct Windows SAPI calls, avoiding repeated-utterance cancellation in
-the previous pyttsx3 implementation. Press T to test audio without signing
-(this explicit test also works while muted). The terminal logs `Speaking:`
-when an utterance starts. Each stable sign is spoken once. Another sign may be spoken
-after a two-second cooldown. To repeat the same sign, remove your hands for at
-least one second or press R, then sign again. Brief tracking gaps do not rearm
-speech. Press M to mute/unmute or launch with `--mute`. Muting clears pending
-speech; an utterance already playing may finish. Voice initialization failures
-leave text recognition running and show speech as unavailable.
+Checks cover UI controls, resource cleanup, silent background behavior, responsiveness during blocked loading/prediction, and model/worker execution. They do not replace real gesture accuracy testing. Model-dependent tests need the downloaded MediaPipe asset.
 
-Test each sign several times, then test resting hands and transitions. Record
-mistakes and whether predictions take too long. No new webcam recordings are
-saved by this script. Next milestones are background examples, evaluation on
-new sessions/signers and expanding vocabulary/landmarks. Adding
-pose/face features changes the input schema and requires new training data.
+## Source map
 
-## Verification status
+| File | Responsibility |
+| --- | --- |
+| collect_data.py / dataset.py | Collection, vocabulary, validation and loading |
+| hand_features.py | Shared feature ordering |
+| train_model.py | Training and evaluation reports |
+| recognize.py / speech.py | CLI recognition, confirmation and offline speech |
+| app.py / app_runtime.py | Local UI, camera and recognition orchestration |
+| inference_worker.py | Persistent model/tracker process |
+| start_app.bat | Windows local app launcher |
 
-Dataset rejection and clip-split logic are checked locally. TensorFlow 2.21.0
-loads and runs a synthetic LSTM training step in .venv-train. The latest dataset
-check found 30 valid clips for each sign. The first training run completed:
-
-- Model: `models/run_20261019_232551_504610/isl_lstm.keras`
-- Report: `models/run_20261019_232551_504610/report.json`
-- Split: 66 training, 12 validation, 12 test clips.
-- Early stopping: 27 epochs, restored epoch 15.
-- Test: 12/12 correct, four clips per sign. Reloaded model reproduced this result.
-
-This small random clip test does not measure performance on new signers or
-sessions. Live webcam recognition is implemented; interactive accuracy still
-requires testing by a signer at the webcam.
-The user subsequently confirmed live recognition worked and reported correct
-predictions during their informal test, with occasional delay. No exact trial
-counts or timed latency measurements were supplied; this is qualitative feedback.
-Keras saving stalled in Windows sandbox temporary-file creation; rerunning
-with approved access outside the sandbox completed successfully.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the team workflow and [CHANGELOG.md](CHANGELOG.md) for changes. The mentor report is in `output/pdf/ISL_Translator_Mentor_Review.pdf`; it describes project status as of 26 October 2026, rather than subsequent changes.

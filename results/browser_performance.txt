@@ -1,0 +1,9 @@
+keyboard_arrow_down
+
+Performance
+
+Camera: 29.7 frames/s
+
+Hand tracking: 13.8 frames/s
+
+Last prediction: 0.0 ms

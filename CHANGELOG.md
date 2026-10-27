@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased — Streamlit app
+
+- Added selected-label collection and resumable targets for NO/NO_SIGN data improvement.
+- Added fresh-clone setup, collaborator workflow and mentor review PDF.
+- Known issue: NO/NO_SIGN confusion remains; no retrained model is included.
+- Compiled model inference: measured median 127.07 ms to 2.39 ms, with matching saved-test predictions.
+- Faster JPEG preview updates, independent of recognition sampling.
+- Restored the recorder's 50 ms pause after hand processing and native camera resolution to reduce differences between training and app inputs.
+- Live performance readings for capture, hand tracking and prediction.
+- Isolated TensorFlow from Streamlit's Keras cleanup to prevent model stalls during reruns.
+- Preserved sign windows across tracking gaps shorter than 0.2 seconds.
+
+- Fixed preview freezing during model startup or prediction by separating camera capture.
+- Stop can release capture while model loading continues in the background.
+- Added regression checks for deliberately blocked loading and slow predictions.
+
+- Double-click Windows launcher with clear instructions to keep the local server running.
+
+- Simplified layout with fixed camera area, compact recognition display and settings expander.
+- Controls stay outside periodic updates; idle pages no longer rerun continuously.
+- Opens the camera before model loading, reports startup stages and tries a Windows camera fallback.
+- Checked actual live frame updates, hand detection, audio test, reset and Stop in a browser.
+- Local browser interface with camera Start/Stop, recognized words and recent word history.
+- Speech toggle, audio test, camera selection and reset controls.
+- Background capture with shared landmark format, LSTM and smoothing from v1.
+- Camera resources are released on Stop, errors or browser inactivity.
+- Uses the existing v1.0.0 model; its recorded evaluation remains unchanged.
+
 ## v1.0.0 — 2026-10-23
 
 First GitHub release of the working Windows webcam prototype.

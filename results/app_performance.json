@@ -1,0 +1,7 @@
+{
+  "eager_median_ms": 127.07,
+  "eager_p95_ms": 193.26,
+  "compiled_median_ms": 2.39,
+  "compiled_p95_ms": 3.32,
+  "same_predictions": true
+}

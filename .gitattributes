@@ -1,0 +1,5 @@
+# Preserve binary artifacts byte-for-byte on Windows and other platforms.
+*.pdf binary
+*.keras binary
+*.task binary
+*.npy binary

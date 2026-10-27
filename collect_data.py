@@ -1,18 +1,17 @@
-
 import cv2
 import mediapipe as mp
 import numpy as np
 import time
 from pathlib import Path
 from uuid import uuid4
-from dataset import SIGNS, FRAMES, validate, load_dataset
+from dataset import validate, load_dataset
 from hand_features import coordinates
 
 ROOT = Path(__file__).resolve().parent
 
-signs = SIGNS
+signs = ["HELLO", "THANK_YOU", "YES"]
 recordings = 30
-frames = FRAMES
+frames = 30
 
 BaseOptions = mp.tasks.BaseOptions
 HandLandmarker = mp.tasks.vision.HandLandmarker
@@ -68,9 +67,6 @@ with HandLandmarker.create_from_options(options) as detector:
 
             n = int((existing_labels == label_index).sum())
             print(f"{sign}: {n} valid recordings, {max(0, recordings - n)} remaining")
-            if sign == "NO_SIGN":
-                print("Keep hands visible. Relax them or make ordinary non-sign movements.")
-                print("Vary poses across clips; do not perform any of the five trained signs.")
             while n < recordings:
                 print(f"Recording {sign}: {n + 1}/{recordings}")
 
@@ -78,7 +74,7 @@ with HandLandmarker.create_from_options(options) as detector:
                     frame, data = get_coordinates()
 
                     cv2.putText(
-                        frame, f"{sign} - Get ready: {count}",
+                        frame, f"Get ready: {count}",
                         (30, 60),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         1, (0, 255, 0), 2
@@ -100,10 +96,6 @@ with HandLandmarker.create_from_options(options) as detector:
                         cv2.FONT_HERSHEY_SIMPLEX,
                         1, (0, 255, 0), 2
                     )
-                    if sign == "NO_SIGN":
-                        cv2.putText(frame, "Rest or move naturally; keep hands visible",
-                                    (20, 140), cv2.FONT_HERSHEY_SIMPLEX,
-                                    0.6, (0, 255, 255), 2)
 
                     cv2.imshow("Collect ISL Data", frame)
 
