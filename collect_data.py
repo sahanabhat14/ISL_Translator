@@ -1,17 +1,26 @@
-import cv2
-import mediapipe as mp
+import argparse
 import numpy as np
 import time
 from pathlib import Path
 from uuid import uuid4
-from dataset import validate, load_dataset
+from dataset import SIGNS, FRAMES, validate, load_dataset
 from hand_features import coordinates
 
 ROOT = Path(__file__).resolve().parent
 
-signs = ["HELLO", "THANK_YOU", "YES"]
-recordings = 30
-frames = 30
+parser = argparse.ArgumentParser(description="Collect sign clips without overwriting existing recordings.")
+parser.add_argument("--signs", nargs="+", choices=SIGNS, default=SIGNS)
+parser.add_argument("--target", type=int, default=30,
+                    help="Total valid clips per selected label, including existing clips")
+args = parser.parse_args()
+if args.target < 1:
+    parser.error("--target must be positive")
+import cv2
+import mediapipe as mp
+
+signs = list(dict.fromkeys(args.signs))
+recordings = args.target
+frames = FRAMES
 
 BaseOptions = mp.tasks.BaseOptions
 HandLandmarker = mp.tasks.vision.HandLandmarker
@@ -62,11 +71,14 @@ with HandLandmarker.create_from_options(options) as detector:
         return frame, data
 
     try:
-        for label_index, sign in enumerate(signs):
+        for sign in signs:
+            label_index = SIGNS.index(sign)
             (ROOT / "data" / sign).mkdir(parents=True, exist_ok=True)
 
             n = int((existing_labels == label_index).sum())
             print(f"{sign}: {n} valid recordings, {max(0, recordings - n)} remaining")
+            if sign == "NO_SIGN":
+                print("Keep hands visible. Rest or move naturally without performing a trained sign.")
             while n < recordings:
                 print(f"Recording {sign}: {n + 1}/{recordings}")
 
@@ -74,7 +86,7 @@ with HandLandmarker.create_from_options(options) as detector:
                     frame, data = get_coordinates()
 
                     cv2.putText(
-                        frame, f"Get ready: {count}",
+                        frame, f"{sign} - Get ready: {count}",
                         (30, 60),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         1, (0, 255, 0), 2
