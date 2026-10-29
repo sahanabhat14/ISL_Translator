@@ -90,6 +90,7 @@ class RuntimeTests(unittest.TestCase):
                          HandLandmarkerOptions=lambda **kw: kw, RunningMode=NS(VIDEO=1),
                          HandLandmarker=NS(create_from_options=lambda opts: detector))))
         with patch.dict("sys.modules", {"cv2": fake_cv, "mediapipe": fake_mp}), \
+             patch("app_runtime.PreviewStream", return_value=NS(publish=lambda frame: None, close=lambda: None)), \
              patch("app_runtime.load_warmed_model", side_effect=load), \
              patch("app_runtime.create_hand_tracker", return_value=detector), \
              patch("app_runtime.Speaker", return_value=speaker):

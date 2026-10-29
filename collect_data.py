@@ -12,6 +12,8 @@ parser = argparse.ArgumentParser(description="Collect sign clips without overwri
 parser.add_argument("--signs", nargs="+", choices=SIGNS, default=SIGNS)
 parser.add_argument("--target", type=int, default=30,
                     help="Total valid clips per selected label, including existing clips")
+parser.add_argument("--wait-ready", action="store_true",
+                    help="Wait for SPACE before starting each selected sign")
 args = parser.parse_args()
 if args.target < 1:
     parser.error("--target must be positive")
@@ -79,6 +81,18 @@ with HandLandmarker.create_from_options(options) as detector:
             print(f"{sign}: {n} valid recordings, {max(0, recordings - n)} remaining")
             if sign == "NO_SIGN":
                 print("Keep hands visible. Rest or move naturally without performing a trained sign.")
+            if args.wait_ready and n < recordings:
+                print(f"Ready for {sign}. Click the camera window and press SPACE to begin.", flush=True)
+                while True:
+                    frame, _ = get_coordinates()
+                    cv2.putText(frame, f"{sign}: SPACE to begin | Q to quit", (20, 55),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                    cv2.imshow("Collect ISL Data", frame)
+                    key = cv2.waitKey(50) & 0xFF
+                    if key == ord('q'):
+                        raise KeyboardInterrupt
+                    if key == ord(' '):
+                        break
             while n < recordings:
                 print(f"Recording {sign}: {n + 1}/{recordings}")
 

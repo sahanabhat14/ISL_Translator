@@ -4,6 +4,7 @@ import json
 import threading
 
 import streamlit as st
+import streamlit.components.v1 as components
 from app_runtime import CameraSession
 from recognize import DEFAULT_RUN, ROOT
 
@@ -106,7 +107,24 @@ def main():
                    "The app uses the camera and speakers on this Windows laptop.")
 
     session = st.session_state.camera_session
-    refresh = 0.1 if session is not None and session.thread.is_alive() else None
+    refresh = 0.3 if session is not None and session.thread.is_alive() else None
+    preview, output = st.columns([1.65, 1], gap="large")
+    with preview:
+        stream = getattr(session, "preview", None)
+        if session is not None and session.thread.is_alive() and stream is not None:
+            components.html(
+                '<style>html,body{margin:0;background:#202829;overflow:hidden;}'
+                'img{width:100%;height:440px;object-fit:contain;border-radius:5px;}</style>'
+                '<img alt="Live camera preview" src="' + html.escape(stream.url, quote=True) + '">',
+                height=440, scrolling=False)
+        elif session is not None and session.thread.is_alive():
+            # Fallback for alternate session implementations.
+            frame = session.snapshot().get("frame")
+            if frame is not None:
+                st.image(frame, channels="RGB", width="stretch", output_format="JPEG")
+        else:
+            st.markdown('<div class="camera-idle"><strong>Camera is off</strong>'
+                        '<span>Use Start camera above.</span></div>', unsafe_allow_html=True)
 
 
     @st.fragment(run_every=refresh)
@@ -117,14 +135,6 @@ def main():
                             speech="Off", history=[], frames=0)
         else:
             snapshot = current.snapshot()
-        preview, output = st.columns([1.65, 1], gap="large")
-        with preview:
-            if snapshot["frame"] is not None:
-                st.image(snapshot["frame"], channels="RGB", width="stretch", output_format="JPEG")
-            else:
-                message = "Camera is off" if current is None or not current.thread.is_alive() else snapshot["status"]
-                st.markdown('<div class="camera-idle"><strong>' + html.escape(message) +
-                            '</strong><span>Use Start camera above.</span></div>', unsafe_allow_html=True)
         with output:
             status = snapshot["status"]
             word = status.capitalize() if status in signs else "—"
@@ -135,6 +145,7 @@ def main():
             if snapshot.get("ready"):
                 with st.expander("Performance"):
                     st.write(f"Camera: {snapshot.get('camera_fps', 0):.1f} frames/s")
+                    st.write(f"Preview stream: {getattr(getattr(current, 'preview', None), 'fps', 0):.1f} frames/s")
                     st.write(f"Hand tracking: {snapshot.get('tracking_fps', 0):.1f} frames/s")
                     st.write(f"Last prediction: {snapshot.get('prediction_ms', 0):.1f} ms")
             if snapshot["error"]:

@@ -11,6 +11,7 @@ from hand_features import coordinates
 from recognize import StablePrediction
 from inference_worker import ModelProcess
 from speech import Speaker, SpeechGate
+from preview_stream import PreviewStream
 
 
 @lru_cache(maxsize=2)
@@ -55,12 +56,14 @@ class CameraSession:
         self.capture_ready = threading.Event()
         self.capture_error = None
         self.capture_thread = None
+        self.preview = None
         self.latest_rgb = None
         self.frame_number = 0
         self.captured_at = 0
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     def start(self):
+        self.preview = PreviewStream()
         self.thread.start()
 
     def snapshot(self):
@@ -124,6 +127,7 @@ class CameraSession:
                 for x, y in points:
                     cv2.circle(display, (int(x * width), int(y * height)), 3, (0, 220, 140), -1)
                 self.publish(frame=display, captured=count, camera_fps=fps)
+                self.preview.publish(display)
                 self.capture_ready.set()
                 # The camera driver already paces reads. Do not add 50 ms per read.
                 if self.stop_event.wait(.001):
@@ -273,6 +277,8 @@ class CameraSession:
                         getattr(resource, method)()
                     except Exception as error:
                         self.publish(error=f"Could not finish camera cleanup: {error}")
+            if self.preview is not None:
+                self.preview.close()
             if acquired:
                 if self.capture_thread is not None and self.capture_thread.is_alive():
                     self.publish(error="The camera driver is not responding. Close other camera apps before retrying.")

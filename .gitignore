@@ -15,3 +15,9 @@ models/v1.0.0/*
 
 # Generated previews and authoring scratch files
 tmp/
+
+# Published 15-sign candidate; preserve the original v1 model.
+!models/15_signs/
+models/15_signs/*
+!models/15_signs/isl_lstm.keras
+!models/15_signs/report.json

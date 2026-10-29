@@ -15,11 +15,18 @@ MODEL = ROOT / "models" / "v1.0.0"
                      (ROOT / "models/hand_landmarker.task").exists(), "Needs the release and hand models")
 class InferenceProcessTests(unittest.TestCase):
     def test_saved_model_runs_in_its_own_process(self):
-        report = json.loads((MODEL / "report.json").read_text())
+        self.check_model(MODEL)
+
+    @unittest.skipUnless((ROOT / "models/15_signs/isl_lstm.keras").exists(), "Needs 15-sign candidate")
+    def test_fifteen_sign_candidate_runs_in_its_own_process(self):
+        self.check_model(ROOT / "models/15_signs")
+
+    def check_model(self, model_dir):
+        report = json.loads((model_dir / "report.json").read_text())
         paths = [ROOT / p for p in report["split"]["test"]]
         inputs = (np.stack([np.load(p, allow_pickle=False) for p in paths])
                   if all(p.exists() for p in paths) else np.zeros((1, 30, 126), np.float32))
-        worker = ModelProcess(MODEL)
+        worker = ModelProcess(model_dir)
         try:
             self.assertNotEqual(worker.process.pid, os.getpid())
             predictions = worker(inputs)

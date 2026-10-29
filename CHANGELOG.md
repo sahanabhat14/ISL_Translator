@@ -1,6 +1,20 @@
 # Changelog
 
+## 2026-10-29 - 15-sign candidate update
+
+- Added DRINK, EAT, COME, GO, PLEASE, SLEEP, WRITE, HELP, SORRY and STOP to the original five signs; NO_SIGN remains separate.
+- Bundled the 16-class candidate in models/15_signs with a portable evaluation report; preserved v1.0.0.
+- Latest internal test: 61/64 (95.3%); no independent signer/session evaluation is claimed.
+- Added Space-to-start collection, compiled CLI inference and optional confidence diagnostics.
+- Restored the original camera overlay; it displays the candidate immediately while speech still requires confirmation.
+- Streamlit continues to default to v1.0.0; the latest model is selected explicitly through the CLI.
+
+
 ## Unreleased — Streamlit app
+
+- Moved live preview out of Streamlit image reruns into a loopback-only latest-frame MJPEG stream; status updates remain separate.
+- Display copies are resized without changing model input resolution or sampling cadence.
+- Added preview delivery, input-preservation and shutdown checks.
 
 - Added selected-label collection and resumable targets for NO/NO_SIGN data improvement.
 - Added fresh-clone setup, collaborator workflow and mentor review PDF.

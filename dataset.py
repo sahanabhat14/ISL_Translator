@@ -2,7 +2,9 @@
 from pathlib import Path
 import numpy as np
 
-SIGNS = ["HELLO", "THANK_YOU", "YES", "NO", "BYE", "NO_SIGN"]
+SIGNS = ["HELLO", "THANK_YOU", "YES", "NO", "BYE", "NO_SIGN",
+         "DRINK", "EAT", "COME", "GO", "PLEASE",
+         "SLEEP", "WRITE", "HELP", "SORRY", "STOP"]
 FRAMES, FEATURES = 30, 126
 
 

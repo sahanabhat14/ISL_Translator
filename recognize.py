@@ -58,14 +58,19 @@ def main():
     parser.add_argument("--threshold", type=float, default=0.8)
     parser.add_argument("--check", action="store_true", help="Check model and detector without opening a camera")
     parser.add_argument("--mute", action="store_true", help="Start with speech muted")
+    parser.add_argument("--debug", action="store_true", help="Print candidate scores and sequence duration")
     args = parser.parse_args()
     if not 0 < args.threshold <= 1:
         parser.error("--threshold must be in (0, 1]")
     import cv2
     import mediapipe as mp
     model, report = load_run(args.model_dir)
+    import tensorflow as tf
+    predict = tf.function(lambda batch: model(batch, training=False),
+                          input_signature=[tf.TensorSpec([None, FRAMES, FEATURES], tf.float32)],
+                          autograph=False)
     # Warm up inference before capture so its first call does not stall the camera.
-    model(np.zeros((1, FRAMES, FEATURES), dtype=np.float32), training=False)
+    predict(np.zeros((1, FRAMES, FEATURES), dtype=np.float32))
     options = mp.tasks.vision.HandLandmarkerOptions(
         base_options=mp.tasks.BaseOptions(model_asset_path=str(ROOT / "models/hand_landmarker.task")),
         running_mode=mp.tasks.vision.RunningMode.VIDEO, num_hands=2)
@@ -79,13 +84,16 @@ def main():
                     raise FileNotFoundError("Saved evaluation clips are not included in GitHub. Restore the local dataset to run --check.")
                 sample = np.load(sample_path, allow_pickle=False)
                 validate(sample)
-                prediction = np.asarray(model(sample[None], training=False))
+                prediction = np.asarray(predict(sample[None]))
                 assert prediction.shape == (1, len(report["labels"]))
                 assert np.isfinite(prediction).all()
             print("Model, held-out clip inference and hand detector checked. Webcam not opened.")
             return
         cap = cv2.VideoCapture(args.camera)
         buffer = deque(maxlen=FRAMES)
+        frame_times = deque(maxlen=FRAMES)
+        candidate_text = "Candidate: waiting for a full sequence"
+        candidate_word = None
         smoother = StablePrediction(report["labels"], args.threshold)
         status = "Show your hands"
         step, last_timestamp = 0, -1
@@ -112,16 +120,27 @@ def main():
                 speech_gate.observe_hands(bool(np.any(data)), time.monotonic())
                 if not np.any(data):
                     buffer.clear()
+                    frame_times.clear()
+                    candidate_text = "Candidate: hands not detected"
+                    candidate_word = None
                     smoother.reset()
                     step = 0
                     status = "Show your hands"
                 else:
                     buffer.append(data)
+                    frame_times.append(timestamp / 1000)
                     step += 1
                     if len(buffer) < FRAMES:
                         status = f"Collecting {len(buffer)}/{FRAMES} frames"
                     elif step % 5 == 0:
-                        probabilities = np.asarray(model(np.asarray(buffer)[None], training=False))[0]
+                        probabilities = np.asarray(predict(np.asarray(buffer, dtype=np.float32)[None]))[0]
+                        ranking = np.argsort(probabilities)[::-1][:3]
+                        candidate_word = report["labels"][ranking[0]].replace("_", " ")
+                        candidate_text = (f"Candidate: {report['labels'][ranking[0]]} "
+                                          f"{probabilities[ranking[0]]:.0%} | need {args.threshold:.0%}")
+                        if args.debug:
+                            scores = ", ".join(f"{report['labels'][i]}={probabilities[i]:.1%}" for i in ranking)
+                            print(f"{scores} | window={frame_times[-1]-frame_times[0]:.2f}s", flush=True)
                         status = smoother.update(probabilities)
                         if "NO_SIGN" in report["labels"] and report["labels"][int(np.argmax(probabilities))] == "NO_SIGN":
                             speaker.clear()
@@ -136,7 +155,9 @@ def main():
                     for lm in hand:
                         cv2.circle(frame, (int(lm.x*w), int(lm.y*h)), 3, (0, 255, 0), -1)
                 audio_status = "unavailable" if speaker.error else "muted" if muted else "on" if speaker.ready.is_set() else "starting"
-                for row, text in enumerate([status, f"Hands: {len(result.hand_landmarks)} | Q quit | R reset",
+                # Display the best candidate immediately; speech still requires confirmation.
+                display_word = ("No sign" if candidate_word == "NO SIGN" else candidate_word) or status
+                for row, text in enumerate([display_word, f"Hands: {len(result.hand_landmarks)} | Q quit | R reset",
                                             f"Speech: {audio_status} | M mute | T audio test"]):
                     cv2.putText(frame, text, (15, 35 + 35*row), cv2.FONT_HERSHEY_SIMPLEX,
                                 0.7, (0, 255, 255), 2)
@@ -149,6 +170,9 @@ def main():
                     speech_gate.reset()
                     speaker.clear()
                     buffer.clear()
+                    frame_times.clear()
+                    candidate_text = "Candidate: waiting for a full sequence"
+                    candidate_word = None
                     smoother.reset()
                     step = 0
                     status = "Reset"
